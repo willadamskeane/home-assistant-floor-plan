@@ -804,11 +804,36 @@ public class Controller {
     }
 
     private String generateRgbLightYaml(String lightName, String imageName) throws IOException {
+        // Generate two layers for RGB lights:
+        // 1. Luminance layer with mix-blend-mode: lighten
+        // 2. Color layer with mix-blend-mode: normal
         return String.format(
+            // Luminance layer
             "  - type: custom:config-template-card\n" +
             "    variables:\n" +
             "      LIGHT_STATE: states['%s'].state\n" +
-            "      COLOR_MODE: states['%s'].attributes.color_mode\n" +
+            "      BRIGHTNESS: states['%s'].attributes.brightness\n" +
+            "    entities:\n" +
+            "      - %s\n" +
+            "    element:\n" +
+            "      type: image\n" +
+            "      image: /local/floorplan/%s.png?version=%s\n" +
+            "      state_image:\n" +
+            "        'on': /local/floorplan/%s.png?version=%s\n" +
+            "      entity: %s\n" +
+            "    style:\n" +
+            "      mask-image: >-\n" +
+            "        radial-gradient(farthest-side at 30%% 70%%, rgba(0,0,0,1) 20%%, transparent 40%%)\n" +
+            "      opacity: '${LIGHT_STATE === ''on'' ? (BRIGHTNESS / 255)*0.8+0.2 : ''0''}'\n" +
+            "      mix-blend-mode: lighten\n" +
+            "      pointer-events: none\n" +
+            "      left: 50%%\n" +
+            "      top: 50%%\n" +
+            "      width: 100%%\n" +
+            // Color layer
+            "  - type: custom:config-template-card\n" +
+            "    variables:\n" +
+            "      LIGHT_STATE: states['%s'].state\n" +
             "      LIGHT_COLOR: states['%s'].attributes.hs_color\n" +
             "      BRIGHTNESS: states['%s'].attributes.brightness\n" +
             "    entities:\n" +
@@ -817,21 +842,29 @@ public class Controller {
             "      type: image\n" +
             "      image: /local/floorplan/%s.png?version=%s\n" +
             "      state_image:\n" +
-            "        'on': >-\n" +
-            "          ${COLOR_MODE === 'color_temp' || ((COLOR_MODE === 'rgb' || COLOR_MODE === 'hs') && LIGHT_COLOR && LIGHT_COLOR[0] == 0 && LIGHT_COLOR[1] == 0) ?\n" +
-            "          '/local/floorplan/%s.png?version=%s' :\n" +
-            "          '/local/floorplan/%s.png?version=%s' }\n" +
+            "        'on': /local/floorplan/%s.red.png?version=%s\n" +
             "      entity: %s\n" +
             "    style:\n" +
-            "      filter: '${ \"hue-rotate(\" + (LIGHT_COLOR ? LIGHT_COLOR[0] : 0) + \"deg)\"}'\n" +
-            "      opacity: '${LIGHT_STATE === ''on'' ? (BRIGHTNESS / 255) : ''100''}'\n" +
-            "      mix-blend-mode: lighten\n" +
+            "      mask-image: >-\n" +
+            "        radial-gradient(farthest-side at 20%% 70%%, rgba(0,0,0,1) 20%%, transparent 40%%)\n" +
+            "      filter: >-\n" +
+            "        ${ \"opacity(\" + (LIGHT_COLOR ? LIGHT_COLOR[1] : 100) + \"%%) hue-rotate(\" + (LIGHT_COLOR ? LIGHT_COLOR[0] : 0) + \"deg)\"}\n" +
+            "      opacity: '${LIGHT_STATE === ''on'' ? (BRIGHTNESS / 255)*0.8+0.2 : ''0''}'\n" +
+            "      mix-blend-mode: normal\n" +
             "      pointer-events: none\n" +
             "      left: 50%%\n" +
             "      top: 50%%\n" +
             "      width: 100%%\n",
-            lightName, lightName, lightName, lightName, lightName, TRANSPARENT_IMAGE_NAME, renderHash(TRANSPARENT_IMAGE_NAME, true),
-            imageName, renderHash(imageName, true), imageName + ".red", renderHash(imageName + ".red", true), lightName);
+            // Luminance layer parameters
+            lightName, lightName, lightName, 
+            TRANSPARENT_IMAGE_NAME, renderHash(TRANSPARENT_IMAGE_NAME, true),
+            imageName, renderHash(imageName, true), 
+            lightName,
+            // Color layer parameters
+            lightName, lightName, lightName, lightName,
+            TRANSPARENT_IMAGE_NAME, renderHash(TRANSPARENT_IMAGE_NAME, true),
+            imageName, renderHash(imageName + ".red", true),
+            lightName);
     }
 
     private void restoreLightsPower(Map<HomeLight, Float> lightsPower) {
